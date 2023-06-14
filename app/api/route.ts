@@ -22,14 +22,18 @@ export async function POST(request: NextRequest) {
   try {
     const openaiRes = await openai.createChatCompletion(
       {
-        model: 'gpt-4',
+        model: 'gpt-4-0613',
         max_tokens: 100,
         temperature: 0,
         stream: true,
-        messages: res
+        messages: res,
+        functions: functionsForModel,
+        function_call: "auto",
       },
       { responseType: 'stream' }
     );
+
+    let functionName: string = "";
 
     // @ts-ignore
     openaiRes.data.on('data', async (data: Buffer) => {
@@ -41,19 +45,40 @@ export async function POST(request: NextRequest) {
         const message = line.replace(/^data: /, '');
         if (message === '[DONE]') {
           console.log('Stream completed');
-          writer.close();
           return;
         }
         try {
           const parsed = JSON.parse(message);
           if (parsed.choices[0].delta.content) {
             await writer.write(encoder.encode(`data:${parsed.choices[0].delta.content}\n\n`));
+          } else if (parsed.choices[0].delta.function_call) {
+            console.log("inside function call" + parsed.choices[0].delta.function_call.name)
+            const functionCall = parsed.choices[0].delta.function_call
+
+            if (functionCall.name) {
+              console.log("inside function name")
+              functionName = functionCall.name
+            }
           }
         } catch (error) {
           console.error('Could not JSON parse stream message', message, error);
         }
       }
     });
+
+    // @ts-ignore
+    openaiRes.data.on('end', async () => {
+      console.log('Stream ended');
+
+      if (functionName === 'add') {
+        const sum = add(1, 2)
+
+        await writer.write(encoder.encode(`data:${sum}\n\n`));
+      }
+
+      writer.close();
+    });
+
   } catch (error) {
     console.error('An error occurred during OpenAI request', error);
     writer.write(encoder.encode('An error occurred during OpenAI request'));
@@ -67,4 +92,38 @@ export async function POST(request: NextRequest) {
       'Cache-Control': 'no-cache, no-transform',
     },
   });
+}
+
+type ChatFunction = {
+    name: string,
+    description: string,
+    parameters: {
+        type: string,
+        properties: any,
+        required: string[],
+    },
+}
+
+const functionsForModel: ChatFunction[] = [
+    {
+        name: 'add',
+        description: 'Adds two numbers together',
+        parameters: {
+            type: 'object',
+            properties: {
+                a: {
+                    type: 'number',
+                },
+                b: {
+                    type: 'number',
+                },
+            },
+            required: ['a', 'b'],
+        },
+    },
+]
+
+function add(a: number, b: number): number {
+  console.log('Adding', a, b)
+    return a + b
 }
