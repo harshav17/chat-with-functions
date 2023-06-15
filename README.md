@@ -18,10 +18,10 @@ npm run dev
 ## Create functions the GPT can use
 Checkout utils/funcs.ts to see the currently available functions. 
 
-1. harshaAge
+1. `harshaAge`
 Get harsha's age. fun func to show case augementing GPT with data it doesn't have.
 
-2. getCurrentWeather
+2. `getCurrentWeather`
 Given a lat and long, gets the current weather.
 This uses OpenWeather API. Navigate to 
 Paste the API key in the .env.local
