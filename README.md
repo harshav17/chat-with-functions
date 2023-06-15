@@ -1,31 +1,37 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## Demo
+[Checkout it out!](https://www.loom.com/share/514ccedabecb414f80e79c1627c15df7?sid=3f6965ca-5413-441d-9b56-311349570d2a)
 
 ## Getting Started
+
+Create .env.local in the root folder. Place the following vars
+```
+OPENAI_API_KEY=<>
+MODEL=<>
+```
 
 First, run the development server:
 
 ```bash
-export OPENAI_API_KEY=''
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Create functions the GPT can use
+Checkout utils/funcs.ts to see the currently available functions. 
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. harshaAge
+Get harsha's age. fun func to show case augementing GPT with data it doesn't have.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+2. getCurrentWeather
+Given a lat and long, gets the current weather.
+This uses OpenWeather API. Navigate to 
+Paste the API key in the .env.local
+```
+OPEN_WEATHER_API_KEY=<>
+```
 
-## Learn More
+3. Want to write your own? All your need to do is the following...
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+    1. Navigate to utils/funcs.ts and write a new functions.
+    2. Make sure add `export` keyword to the function.
+    3. Define function definition in `functionsForModel`.
+    4. Chat away!

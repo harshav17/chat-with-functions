@@ -1,6 +1,7 @@
 // app/api/route.ts
 import { Configuration, OpenAIApi } from 'openai';
 import { type NextRequest } from 'next/server'
+import * as funcs from '@/utils/funcs';
 
 export const runtime = 'nodejs';
 // This is required to enable streaming
@@ -76,12 +77,13 @@ export async function POST(request: NextRequest) {
       await Promise.all(writePromises);
 
       for (let functionCall of functionCalls) {
-        const func = functionMap[functionCall.name];
+        // Check if the function exists in the myFunctions object
+        const func =  (funcs as any)[String(functionCall.name)];
         console.log("function call name" + func);
         if (func) {
           console.log("function call args" + functionCall.argsString);
           const args = JSON.parse(functionCall.argsString);
-          const result = func(args);
+          const result = await func(args);
 
           // TODO respond with better error
           res.push({
@@ -102,12 +104,12 @@ export async function POST(request: NextRequest) {
           try {
             const openaiRes = await openai.createChatCompletion(
               {
-                model: 'gpt-4-0613',
+                model: process.env.MODEL!!,
                 max_tokens: 100,
                 temperature: 0,
                 stream: true,
                 messages: res,
-                functions: functionsForModel,
+                functions: funcs.functionsForModel,
                 function_call: "auto",
               },
               { responseType: 'stream' }
@@ -133,12 +135,12 @@ export async function POST(request: NextRequest) {
   try {
     const openaiRes = await openai.createChatCompletion(
       {
-        model: 'gpt-4-0613',
+        model: process.env.MODEL!!,
         max_tokens: 100,
         temperature: 0,
         stream: true,
         messages: res,
-        functions: functionsForModel,
+        functions: funcs.functionsForModel,
         function_call: "auto",
       },
       { responseType: 'stream' }
@@ -158,45 +160,4 @@ export async function POST(request: NextRequest) {
       'Cache-Control': 'no-cache, no-transform',
     },
   });
-}
-const functionMap: { [key: string]: (args: any) => any } = {
-  harshaAge: () => harshaAge(),
-  // Add more functions here as needed
-};
-
-type ChatFunction = {
-  name: string,
-  description: string,
-  parameters: {
-    type: string,
-    properties: any,
-    required: string[],
-  },
-}
-
-const functionsForModel: ChatFunction[] = [
-  {
-    name: 'harshaAge',
-    description: 'Gives the current age of a Harsha',
-    parameters: {
-      type: 'object',
-      properties: {},
-      required: [],
-    },
-  },
-]
-
-/**
- * gives the current age of a person born on may 17th 1986, accurate to the millisecond
- */
-function harshaAge(): string {
-  const birthDate = new Date(1986, 4, 17); // The month is zero-based, hence 4 represents May
-  const now = new Date();
-
-  const diffInSeconds = Math.abs(now.getTime() - birthDate.getTime()) / 1000;
-  const years = Math.floor(diffInSeconds / (3600 * 24 * 365.25)); // Calculate years considering leap years
-  const days = Math.floor((diffInSeconds / (3600 * 24)) % 365.25); // Calculate remaining days
-  const hours = Math.floor((diffInSeconds / 3600) % 24); // Calculate remaining hours
-
-  return `Age is ${years} years, ${days} days and ${hours} hours.`;
 }
