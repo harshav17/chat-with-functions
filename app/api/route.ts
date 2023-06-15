@@ -43,23 +43,14 @@ export async function POST(request: NextRequest) {
             writePromises.push(writer.write(encoder.encode(`data:${parsed.choices[0].delta.content}\n\n`)));
             //await writer.write(encoder.encode(`data:${parsed.choices[0].delta.content}\n\n`));
           } else if (parsed.choices[0].delta.function_call) {
+            console.log("inside function call" + parsed.choices[0].delta.function_call.name)
             const functionCall = parsed.choices[0].delta.function_call
 
             if (functionCall.name) {
               currentFunctionCallName = functionCall.name;
             }
-            if (functionCall.arguments) {const birthdate = new Date(1986, 4, 17); // Months are 0-based in JavaScript Date
-            const today = new Date();
-        
-            let age = today.getFullYear() - birthdate.getFullYear();
-            const monthDiff = today.getMonth() - birthdate.getMonth();
-        
-            // If the current month is before the birth month or it's the birth month but the day is not yet reached, subtract 1 from age
-            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
-                age--;
-            }
-        
-            return age;
+            if (functionCall.arguments) {
+              console.log("inside function argument" + functionCall.arguments)
               let existingFunctionCall = functionCalls.find(call => call.name === currentFunctionCallName);
               if (existingFunctionCall) {
                 // If a function call with the same name already exists, append the args
@@ -86,7 +77,9 @@ export async function POST(request: NextRequest) {
 
       for (let functionCall of functionCalls) {
         const func = functionMap[functionCall.name];
+        console.log("function call name" + func);
         if (func) {
+          console.log("function call args" + functionCall.argsString);
           const args = JSON.parse(functionCall.argsString);
           const result = func(args);
 
@@ -104,6 +97,7 @@ export async function POST(request: NextRequest) {
             content: JSON.stringify(result),
             name: functionCall.name,
           });
+          console.log(res);
           isRecursiveCall = true;
           try {
             const openaiRes = await openai.createChatCompletion(
@@ -118,11 +112,15 @@ export async function POST(request: NextRequest) {
               },
               { responseType: 'stream' }
             );
+              console.log("after recalling openai")
             await handleOpenaiResponse(openaiRes);
           } catch (error) {
             console.error('An error occurred during OpenAI request', error);
+            console.log("after error")
             writer.write(encoder.encode('An error occurred during OpenAI request'));
+            console.log("after encode")
             writer.close();
+            console.log("after write.close()")
           }
         }
       }
@@ -191,17 +189,14 @@ const functionsForModel: ChatFunction[] = [
 /**
  * gives the current age of a person born on may 17th 1986, accurate to the millisecond
  */
-function harshaAge(): number {
-  const birthdate = new Date(1986, 4, 17); // Months are 0-based in JavaScript Date
-    const today = new Date();
+function harshaAge(): string {
+  const birthDate = new Date(1986, 4, 17); // The month is zero-based, hence 4 represents May
+  const now = new Date();
 
-    let age = today.getFullYear() - birthdate.getFullYear();
-    const monthDiff = today.getMonth() - birthdate.getMonth();
+  const diffInSeconds = Math.abs(now.getTime() - birthDate.getTime()) / 1000;
+  const years = Math.floor(diffInSeconds / (3600 * 24 * 365.25)); // Calculate years considering leap years
+  const days = Math.floor((diffInSeconds / (3600 * 24)) % 365.25); // Calculate remaining days
+  const hours = Math.floor((diffInSeconds / 3600) % 24); // Calculate remaining hours
 
-    // If the current month is before the birth month or it's the birth month but the day is not yet reached, subtract 1 from age
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
-        age--;
-    }
-
-    return age;
+  return `Age is ${years} years, ${days} days and ${hours} hours.`;
 }
