@@ -1,5 +1,5 @@
 ## Demo
-[Checkout it out!](https://www.loom.com/share/514ccedabecb414f80e79c1627c15df7?sid=3f6965ca-5413-441d-9b56-311349570d2a)
+[Checkout it out!](https://www.loom.com/share/7ba244f2ca3046b4b549d025ab52d6ad)
 
 ## Getting Started
 
