@@ -16,19 +16,23 @@ npm run dev
 ```
 
 ## Create functions the GPT can use
-Checkout utils/funcs.ts to see the currently available functions. 
+Checkout `utils/funcs.ts` to see the currently available functions. Here's a hopefully up to date list. See demo above for usage hints.
 
-1. `harshaAge`:
-Get harsha's age. fun func to show case augementing GPT with data it doesn't have.
+1. `addDecimalValues`:
+Adds two decimal values.
 
-2. `getCurrentWeather`:
+2. `addHexadecimalValues`:
+Adds two hexadecimal values.
+
+3. `getCurrentWeather`:
 Given a lat and long, gets the current weather.
 This uses OpenWeather API. Navigate to [OpenWeather](https://home.openweathermap.org/users/sign_in) to get yourself an account. Grab the API key and paste it in `.env.local`.
 ```
 OPEN_WEATHER_API_KEY=<>
+OPEN_WEATHER_APP_ID=<>
 ```
 
-3. Want to write your own? All your need to do is the following...
+4. Want to write your own? All your need to do is the following...
 
     1. Navigate to `utils/funcs.ts` and write a new function.
     2. Make sure add `export` keyword to the function.

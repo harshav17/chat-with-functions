@@ -1,37 +1,45 @@
-
-
-/**
- * gives the current age of a person born on may 17th 1986, accurate to the millisecond
- */
-export function harshaAge(): string {
-    const birthDate = new Date(1986, 4, 17); // The month is zero-based, hence 4 represents May
-    const now = new Date();
-
-    const diffInSeconds = Math.abs(now.getTime() - birthDate.getTime()) / 1000;
-    const years = Math.floor(diffInSeconds / (3600 * 24 * 365.25)); // Calculate years considering leap years
-    const days = Math.floor((diffInSeconds / (3600 * 24)) % 365.25); // Calculate remaining days
-    const hours = Math.floor((diffInSeconds / 3600) % 24); // Calculate remaining hours
-
-    return `Age is ${years} years, ${days} days and ${hours} hours.`;
+type weatherProps = {
+    lat: number;
+    lon: number;
 }
-
-export async function getCurrentWeather(lat: number, lon: number) {
-    const res = await fetch(`https://api.openweathermap.org/data/3.0/onecall?lat=37.7749&lon=-122.4194&appid=ed6c827dfcd357db6df1144a1087a6e0`)
+export async function getCurrentWeather(props: weatherProps) {
+    const { lat, lon } = props;
+    const URL = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${process.env.OPEN_WEATHER_APP_ID}`
+    console.log(URL)
+    const res = await fetch(URL)
     const data = await res.json();
     return data;
 }
 
+type decimalProps = {
+    value1: number;
+    value2: number;
+}
+export function addDecimalValues(props: decimalProps) {
+    const { value1, value2 } = props;
+    let result = value1 + value2;
+    console.log(value1 + " + " + value2 + " = " + result + " (decimal)");
+
+    return value1 + " + " + value2 + " = " + result + " (decimal)";
+}
+
+
+type hexadecimalProps = {
+    value1: string;
+    value2: string;
+}
+export function addHexadecimalValues(props: hexadecimalProps) {
+    const { value1, value2 } = props;
+    let decimal1 = parseInt(value1, 16);
+    let decimal2 = parseInt(value2, 16);
+
+    let result = (decimal1 + decimal2).toString(16);
+    console.log(value1 + " + " + value2 + " = " + result + " (hex)");
+    
+    return value1 + " + " + value2 + " = " + result + " (hex)";
+}
 
 export const functionsForModel: ChatFunction[] = [
-    {
-        name: 'harshaAge',
-        description: 'Gives the current age of a Harsha',
-        parameters: {
-            type: 'object',
-            properties: {},
-            required: [],
-        },
-    },
     {
         name: 'getCurrentWeather',
         description: 'Gives the current weather at a location',
@@ -47,7 +55,43 @@ export const functionsForModel: ChatFunction[] = [
             },
             required: ['lat', 'lon'],
         },
-    }
+    },
+    {
+        name: "addDecimalValues",
+        description: "Add two decimal values",
+        parameters: {
+            type: "object",
+            properties: {
+                value1: {
+                    type: "number",
+                    description: "The first decimal value to add. For example, 5",
+                },
+                value2: {
+                    type: "number",
+                    description: "The second decimal value to add. For example, 10",
+                },
+            },
+            required: ["value1", "value2"],
+        },
+    },
+    {
+        name: "addHexadecimalValues",
+        description: "Add two hexadecimal values",
+        parameters: {
+            type: "object",
+            properties: {
+                value1: {
+                    type: "string",
+                    description: "The first hexadecimal value to add. For example, 5",
+                },
+                value2: {
+                    type: "string",
+                    description: "The second hexadecimal value to add. For example, A",
+                },
+            },
+            required: ["value1", "value2"],
+        },
+    },
 ]
 
 type ChatFunction = {
