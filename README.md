@@ -30,7 +30,7 @@ OPEN_WEATHER_API_KEY=<>
 
 3. Want to write your own? All your need to do is the following...
 
-    1. Navigate to utils/funcs.ts and write a new functions.
+    1. Navigate to `utils/funcs.ts` and write a new function.
     2. Make sure add `export` keyword to the function.
-    3. Define function definition in `functionsForModel`.
+    3. Define function definition in `functionsForModel` property inside `utils/funcs.ts`.
     4. Chat away!
