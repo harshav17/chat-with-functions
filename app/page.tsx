@@ -23,7 +23,6 @@ export default function Chat() {
             setPrompt('');
             setIsSendingMessage(true);
             handleSendMessage(copyPrompt);
-            emitMessage()
         }
     };
 
