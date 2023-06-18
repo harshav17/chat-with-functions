@@ -27,7 +27,7 @@ export default function Chat() {
     };
 
     const handleSendMessage = async (prompt: string) => {
-        const url = '/api'; // Modify the URL to match your server-side endpoint
+        const url = '/api/chat';
         const newChatHistory = [...chatHistory, { role: 'user', content: prompt }]
         setChatHistory(newChatHistory);
 

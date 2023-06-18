@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
       for (let functionCall of functionCalls) {
         // Check if the function exists in the myFunctions object
-        const func =  (funcs as any)[String(functionCall.name)];
+        const func = (funcs as any)[String(functionCall.name)];
         console.log("function call name" + func);
         if (func) {
           console.log("function call args" + functionCall.argsString);
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
               },
               { responseType: 'stream' }
             );
-              console.log("after recalling openai")
+            console.log("after recalling openai")
             await handleOpenaiResponse(openaiRes);
           } catch (error) {
             console.error('An error occurred during OpenAI request', error);
@@ -160,4 +160,19 @@ export async function POST(request: NextRequest) {
       'Cache-Control': 'no-cache, no-transform',
     },
   });
+}
+
+
+export function AIStream(res: Response): ReadableStream {
+  if (!res.ok) {
+    throw new Error(`Unexpected response ${res.status} ${res.statusText}`);
+  }
+
+  const stream = res.body || new ReadableStream({
+    start(controller) {
+      controller.close();
+    }
+  });
+
+  return stream;
 }
