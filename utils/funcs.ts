@@ -39,6 +39,17 @@ export function addHexadecimalValues(props: hexadecimalProps) {
     return value1 + " + " + value2 + " = " + result + " (hex)";
 }
 
+/**
+ * goes to backend quotes store and gets a bunch of quotes
+ * @returns 
+ */
+export async function getQuotes() {
+    const URL = `${process.env.BACKEND_URL}/quotes`;
+    const res = await fetch(URL)
+    const data = await res.json();
+    return data;
+}
+
 export const functionsForModel: ChatFunction[] = [
     {
         name: 'getCurrentWeather',
@@ -92,6 +103,20 @@ export const functionsForModel: ChatFunction[] = [
             required: ["value1", "value2"],
         },
     },
+    {
+        name: "getQuotes",
+        description: "Get computer science quotes",
+        parameters: {
+            type: "object",
+            properties: {
+                value1: {
+                    type: "string",
+                    description: "Type of quote to get. For example, 'all'",
+                },
+            },
+            required: [],
+        },
+    }
 ]
 
 type ChatFunction = {
@@ -101,5 +126,5 @@ type ChatFunction = {
         type: string,
         properties: any,
         required: string[],
-    },
+    } | undefined,
 }
