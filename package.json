@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@headlessui/react": "^1.7.15",
+    "@huggingface/inference": "^2.6.1",
     "@microsoft/fetch-event-source": "^2.0.1",
     "@radix-ui/react-slot": "^1.0.2",
     "@types/node": "20.3.0",

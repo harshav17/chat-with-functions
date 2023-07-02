@@ -27,8 +27,12 @@ Adds two hexadecimal values.
 3. `getCurrentWeather`:
 Given a lat and long, gets the current weather.
 This uses OpenWeather API. Navigate to [OpenWeather](https://home.openweathermap.org/users/sign_in) to get yourself an account. Grab the API key and paste it in `.env.local`.
+
+4. `generateImage`:
+Generate an image from a prompt.
 ```
 OPEN_WEATHER_API_KEY=<>
+HF_API_KEY=<>
 ```
 
 4. Want to write your own? All your need to do is the following...
