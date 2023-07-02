@@ -7,14 +7,117 @@ export const runtime = 'nodejs';
 // This is required to enable streaming
 export const dynamic = 'force-dynamic';
 
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
+
+async function callOpenAI(res: any, writeToStream: (data: any) => Promise<void>) {
+  let functionCalls: any[] = [];
+  let currentFunctionCallName = "";
+  const openaiRes: any = await openai.createChatCompletion(
+    {
+      model: process.env.MODEL!!,
+      max_tokens: 100,
+      temperature: 0,
+      stream: true,
+      messages: res,
+      functions: funcs.functionsForModel,
+      function_call: "auto",
+    },
+    { responseType: 'stream' }
+  );
+  console.log(openaiRes.data);
+
+  const reader = openaiRes.data.body.getReader();
+  while(true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    console.log(value);
+    const parsed = JSON.parse(value);
+    if (parsed.choices[0].delta.content) {
+      await writeToStream(parsed.choices[0].delta.content);
+    } else if (parsed.choices[0].delta.function_call) {
+      // collect function call info and recursively call openai
+      const functionCall = parsed.choices[0].delta.function_call
+      if (functionCall.name) {
+        currentFunctionCallName = functionCall.name;
+      }
+      if (functionCall.arguments) {
+        console.log("inside function argument" + functionCall.arguments)
+        let existingFunctionCall = functionCalls.find(call => call.name === currentFunctionCallName);
+        if (existingFunctionCall) {
+          // If a function call with the same name already exists, append the args
+          existingFunctionCall.argsString += functionCall.arguments;
+        } else {
+          // Otherwise, create a new function call
+          functionCalls.push({
+            name: currentFunctionCallName,
+            argsString: functionCall.arguments || {},
+          });
+        }
+      }
+    }
+  }
+
+  for (let functionCall of functionCalls) {
+    console.log("calling function " + functionCall.name + " with args " + functionCall.argsString);
+    const func =  (funcs as any)[String(functionCall.name)];
+    if (func) {
+      console.log("function call args" + functionCall.argsString);
+      const args = JSON.parse(functionCall.argsString);
+      const funcRes = await func(args);
+
+      res.push({
+        role: "assistant",
+        content: "none",
+        function_call: {
+          name: functionCall.name,
+          arguments: JSON.stringify(args),
+        },
+      });
+      res.push({
+        role: "function",
+        content: JSON.stringify(funcRes),
+        name: functionCall.name,
+      });
+      await callOpenAI(funcRes, writeToStream);
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
+  const res = await request.json();
+  let responseStream = new TransformStream();
+  const writer = responseStream.writable.getWriter();
+  const encoder = new TextEncoder();
+  const writePromises: Promise<void>[] = [];
+
+  // callback function to write to the stream
+  const writeToStream = async (data: any) => {
+    writePromises.push(writer.write(encoder.encode(`data:${data}\n\n`)));
+  };
+
+  await callOpenAI(request, writeToStream);
+
+  await Promise.all(writePromises);
+
+  await writer.close();
+
+  return new Response(responseStream.readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
+}
+
+export async function AFT(request: NextRequest) {
   const res = await request.json()
   console.log(res)
-
-  const configuration = new Configuration({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-  const openai = new OpenAIApi(configuration);
 
   let responseStream = new TransformStream();
   const writer = responseStream.writable.getWriter();
@@ -161,3 +264,4 @@ export async function POST(request: NextRequest) {
     },
   });
 }
+
