@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import BotChatMessage from "./bot-chat-message";
 import UserChatMessage from "./user-chat-message";
+import { Textarea } from "@/components/ui/textarea";
 
 type ChatHistoryRecord = {
     role: string
@@ -15,6 +16,11 @@ export default function Chat() {
     const [chatHistory, setChatHistory] = useState<ChatHistoryRecord[]>([]);
     const [prompt, setPrompt] = useState("");
     const [isSendingMessage, setIsSendingMessage] = useState(false);
+    const endOfMessagesRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatHistory]);
 
     const handleKeyPress = (event: any) => {
         if (event.key === 'Enter') {
@@ -77,56 +83,30 @@ export default function Chat() {
     };
 
     return (
-        <>
-            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 text-gray-800">
-                <div className="flex flex-col flex-grow w-full px-8">
-                    <div className="flex flex-col flex-grow h-0">
-                        {chatHistory.map((record, index) => {
-                            if (record.role === 'assistant') {
-                                return <BotChatMessage key={index} message={record.content} datestring={'12:00'} />;
-                            } else {
-                                return <UserChatMessage key={index} message={record.content} datestring={'12:01'} />;
-                            }
-                        })}
-                        {
-                            currentBotMessage.length > 0 &&
-                            <BotChatMessage key='bademiyan' message={streamDataRef.current} datestring={'12:00'} />
-                        }
-                    </div>
-                </div>
+        <div className="flex flex-col h-screen bg-gray-100 text-gray-800 p-4 overflow-y-auto">
+            <div className="mb-auto pb-20 space-y-4">
+                {chatHistory.map((record, index) => {
+                    if (record.role === 'assistant') {
+                        return <BotChatMessage key={index} message={record.content} datestring={'12:00'} />;
+                    } else {
+                        return <UserChatMessage key={index} message={record.content} datestring={'12:01'} />;
+                    }
+                })}
+                {
+                    currentBotMessage.length > 0 &&
+                    <BotChatMessage key='bademiyan' message={streamDataRef.current} datestring={'12:00'} />
+                }
             </div>
-            <div className="sticky bottom-0 z-50 bg-gray-300 p-4">
-                <div className="flex gap-2">
-                    <input
-                        className="flex-1 items-center h-10 w-full rounded px-3 text-sm text-gray-800"
-                        type="text"
-                        placeholder="Type your message…"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        onKeyDown={handleKeyPress}
-                    />
-                    <button
-                        type="button"
-                        className="flex-none items-center rounded-full border border-transparent bg-indigo-600 p-1 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                        onClick={handleKeyPress}
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth="1.5"
-                            stroke="currentColor"
-                            className="w-6 h-6"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
-                            />
-                        </svg>
-                    </button>
-                </div>
+            <div ref={endOfMessagesRef}></div>
+            <div className="fixed inset-x-0 bottom-0 p-4 bg-gray-50">
+                <input
+                    className="w-full px-3 h-12 py-2 text-sm leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                    placeholder="Type your message…"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                />
             </div>
-        </>
+        </div>
     )
 }

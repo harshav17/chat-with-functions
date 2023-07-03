@@ -45,22 +45,20 @@ async function callOpenAI(res: any, writeToStream: (data: any) => Promise<void>,
   while(true) {
     const { done, value } = await reader.read();
     if (done) {
+      console.log("done");
       break;
     }
 
     const chunk = decoder.decode(value);
-    console.log("chunk: " + chunk);
     const lines = chunk.split("\n");
     const parsedLines: any = lines
         .map((line) => line.replace("data: ", "").trim()) // Remove the "data: " prefix
         .filter((line) => line !== "" && line !== "[DONE]") // Remove empty lines and "[DONE]"
         .map((line) => {
-          console.log("line: " + line)
           return JSON.parse(line)
         });
     
     for (const parsedLine of parsedLines) {
-      console.log("parsedLine: " + parsedLine);
       const { content, function_call, finish_reason } = parsedLine.choices[0].delta;
       if (finish_reason) {
         console.log("finish_reason: " + finish_reason);
@@ -92,6 +90,7 @@ async function callOpenAI(res: any, writeToStream: (data: any) => Promise<void>,
   for (let functionCall of functionCalls) {
     const func =  (funcs as any)[String(functionCall.name)];
     if (func) {
+      console.log("args: " + functionCall.argsString);
       const args = JSON.parse(functionCall.argsString);
       const funcRes = await func(args);
 
@@ -143,6 +142,8 @@ export async function POST(request: NextRequest) {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
+      'Transfer-Encoding': 'chunked',
+      'X-Content-Type-Options': 'nosniff',
       Connection: 'keep-alive',
     },
   });
