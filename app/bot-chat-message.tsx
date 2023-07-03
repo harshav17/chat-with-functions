@@ -13,7 +13,9 @@ export default function BotChatMessage(props: props) {
                 <div className="bg-gray-300 p-3 rounded-r-lg rounded-bl-lg">
                     <p className="text-sm">{message}</p>
                 </div>
+                {/*
                 <span className="text-xs text-gray-500 leading-none">{datestring}</span>
+                */}
             </div>
         </div>
     );

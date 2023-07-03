@@ -1,5 +1,5 @@
 // app/api/route.ts
-import { Configuration, OpenAIApi } from 'openai';
+import { ChatCompletionResponseMessage, Configuration, OpenAIApi } from 'openai';
 import { type NextRequest } from 'next/server'
 import * as funcs from '@/utils/funcs';
 
@@ -7,157 +7,145 @@ export const runtime = 'nodejs';
 // This is required to enable streaming
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: NextRequest) {
-  const res = await request.json()
-  console.log(res)
-
+async function callOpenAI(res: any, writeToStream: (data: any) => Promise<void>, closeWriter: (() => Promise<void>) | undefined) {
   const configuration = new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
   });
   const openai = new OpenAIApi(configuration);
+
+  console.log("calling openai");
+  let functionCalls: any[] = [];
+  let currentFunctionCallName = "";
+
+   // Create a new AbortController instance
+   const controller = new AbortController();
+   const signal = controller.signal;
+
+  // Fetch the response from the OpenAI API with the signal from AbortController
+  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: process.env.MODEL!!,
+      messages: res,
+      max_tokens: 100,
+      stream: true, // For streaming responses
+      temperature: 0,
+      functions: funcs.functionsForModel,
+      function_call: "auto",
+    }),
+    signal, // Pass the signal to the fetch request
+  });
+
+  const reader = openaiRes.body!.getReader();
+  const decoder = new TextDecoder("utf-8");
+  while(true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      console.log("done");
+      break;
+    }
+
+    const chunk = decoder.decode(value);
+    const lines = chunk.split("\n");
+    const parsedLines: any = lines
+        .map((line) => line.replace("data: ", "").trim()) // Remove the "data: " prefix
+        .filter((line) => line !== "" && line !== "[DONE]") // Remove empty lines and "[DONE]"
+        .map((line) => {
+          return JSON.parse(line)
+        });
+    
+    for (const parsedLine of parsedLines) {
+      const { content, function_call, finish_reason } = parsedLine.choices[0].delta;
+      if (finish_reason) {
+        console.log("finish_reason: " + finish_reason);
+        break;
+      } else if (content) {
+        await writeToStream(content);
+      } else if (function_call) {
+        // collect function call info and recursively call openai
+        if (function_call.name) {
+          currentFunctionCallName = function_call.name;
+        }
+        if (function_call.arguments) {
+          let existingFunctionCall = functionCalls.find(call => call.name === currentFunctionCallName);
+          if (existingFunctionCall) {
+            // If a function call with the same name already exists, append the args
+            existingFunctionCall.argsString += function_call.arguments;
+          } else {
+            // Otherwise, create a new function call
+            functionCalls.push({
+              name: currentFunctionCallName,
+              argsString: function_call.arguments || {},
+            });
+          }
+        }
+      }
+    }
+  }
+
+  for (let functionCall of functionCalls) {
+    const func =  (funcs as any)[String(functionCall.name)];
+    if (func) {
+      console.log("args: " + functionCall.argsString);
+      const args = JSON.parse(functionCall.argsString);
+      const funcRes = await func(args);
+
+      res.push({
+        role: "assistant",
+        content: "none",
+        function_call: {
+          name: functionCall.name,
+          arguments: JSON.stringify(args),
+        },
+      });
+      res.push({
+        role: "function",
+        content: JSON.stringify(funcRes),
+        name: functionCall.name,
+      });
+      await callOpenAI(res, writeToStream, undefined);
+    }
+  }
+
+  // close the writer after all recursive calls are done
+  if (closeWriter) {
+    await closeWriter();
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const res = await request.json();
 
   let responseStream = new TransformStream();
   const writer = responseStream.writable.getWriter();
   const encoder = new TextEncoder();
   const writePromises: Promise<void>[] = [];
 
-  const handleOpenaiResponse = async (openaiRes: any) => {
-    let functionCalls: any[] = [];
-    let currentFunctionCallName = "";
-    let isRecursiveCall = false;
+  // callback function to write to the stream
+  const writeToStream = async (data: any) => {
+    writePromises.push(writer.write(encoder.encode(`data:${data}\n\n`)));
+  };
 
-    // @ts-ignore
-    openaiRes.data.on('data', async (data: Buffer) => {
-      const lines = data
-        .toString()
-        .split('\n')
-        .filter((line: string) => line.trim() !== '');
-      for (const line of lines) {
-        const message = line.replace(/^data: /, '');
-        if (message === '[DONE]') {
-          console.log('Stream completed');
-          return;
-        }
-        try {
-          const parsed = JSON.parse(message);
-          if (parsed.choices[0].delta.content) {
-            writePromises.push(writer.write(encoder.encode(`data:${parsed.choices[0].delta.content}\n\n`)));
-            //await writer.write(encoder.encode(`data:${parsed.choices[0].delta.content}\n\n`));
-          } else if (parsed.choices[0].delta.function_call) {
-            console.log("inside function call" + parsed.choices[0].delta.function_call.name)
-            const functionCall = parsed.choices[0].delta.function_call
+  const closeWriter = async () => {
+    console.log("closing writer");
+    await Promise.all(writePromises);
+    await writer.close();
+  };
 
-            if (functionCall.name) {
-              currentFunctionCallName = functionCall.name;
-            }
-            if (functionCall.arguments) {
-              console.log("inside function argument" + functionCall.arguments)
-              let existingFunctionCall = functionCalls.find(call => call.name === currentFunctionCallName);
-              if (existingFunctionCall) {
-                // If a function call with the same name already exists, append the args
-                existingFunctionCall.argsString += functionCall.arguments;
-              } else {
-                // Otherwise, create a new function call
-                functionCalls.push({
-                  name: currentFunctionCallName,
-                  argsString: functionCall.arguments || {},
-                });
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Could not JSON parse stream message', message, error);
-        }
-      }
-    });
-
-    // @ts-ignore
-    openaiRes.data.on('end', async () => {
-      console.log('Stream ended');
-      await Promise.all(writePromises);
-
-      for (let functionCall of functionCalls) {
-        // Check if the function exists in the myFunctions object
-        const func =  (funcs as any)[String(functionCall.name)];
-        console.log("function call name" + func);
-        if (func) {
-          console.log("function call args" + functionCall.argsString);
-          const args = JSON.parse(functionCall.argsString);
-          const result = await func(args);
-
-          // TODO respond with better error
-          res.push({
-            role: "assistant",
-            content: "none",
-            function_call: {
-              name: functionCall.name,
-              arguments: JSON.stringify(args),
-            },
-          });
-          res.push({
-            role: "function",
-            content: JSON.stringify(result),
-            name: functionCall.name,
-          });
-          console.log(res);
-          isRecursiveCall = true;
-          try {
-            const openaiRes = await openai.createChatCompletion(
-              {
-                model: process.env.MODEL!!,
-                max_tokens: 100,
-                temperature: 0,
-                stream: true,
-                messages: res,
-                functions: funcs.functionsForModel,
-                function_call: "auto",
-              },
-              { responseType: 'stream' }
-            );
-              console.log("after recalling openai")
-            await handleOpenaiResponse(openaiRes);
-          } catch (error) {
-            console.error('An error occurred during OpenAI request', error);
-            console.log("after error")
-            writer.write(encoder.encode('An error occurred during OpenAI request'));
-            console.log("after encode")
-            writer.close();
-            console.log("after write.close()")
-          }
-        }
-      }
-      if (!isRecursiveCall) {
-        writer.close();
-      }
-    });
-  }
-
-  try {
-    const openaiRes = await openai.createChatCompletion(
-      {
-        model: process.env.MODEL!!,
-        max_tokens: 100,
-        temperature: 0,
-        stream: true,
-        messages: res,
-        functions: funcs.functionsForModel,
-        function_call: "auto",
-      },
-      { responseType: 'stream' }
-    );
-
-    await handleOpenaiResponse(openaiRes);
-  } catch (error) {
-    console.error('An error occurred during OpenAI request', error);
-    writer.write(encoder.encode('An error occurred during OpenAI request'));
-    writer.close();
-  }
+  callOpenAI(res, writeToStream, closeWriter);
 
   return new Response(responseStream.readable, {
     headers: {
       'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Transfer-Encoding': 'chunked',
+      'X-Content-Type-Options': 'nosniff',
       Connection: 'keep-alive',
-      'Cache-Control': 'no-cache, no-transform',
     },
   });
 }
+

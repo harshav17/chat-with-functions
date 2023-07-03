@@ -62,6 +62,8 @@ type generateImageProps = {
 
 export async function generateImage(props: generateImageProps) {
     const { prompt, negativePrompt } = props;
+    console.log("prompt: " + prompt);
+    console.log("negativePrompt: " + negativePrompt);
     const blob = await hf.textToImage({
         inputs: prompt,
         model: 'stabilityai/stable-diffusion-2',
