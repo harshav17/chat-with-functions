@@ -1,7 +1,12 @@
 import { HfInference } from '@huggingface/inference'
 const hf = new HfInference(process.env.HF_API_KEY)
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+    getSignedUrl,
+  } from "@aws-sdk/s3-request-presigner";
 
-import fs from 'fs'
+const REGION = process.env.REGION!;
+const s3Client = new S3Client({ region: REGION });
 
 type weatherProps = {
     lat: number;
@@ -13,7 +18,12 @@ export async function getCurrentWeather(props: weatherProps) {
     console.log(URL)
     const res = await fetch(URL)
     const data = await res.json();
-    return data;
+    return JSON.stringify({
+        temp: data.current.temp,
+        feels_like: data.current.feels_like,
+        humidity: data.current.humidity,
+        wind_speed: data.current.wind_speed,
+    });
 }
 
 type decimalProps = {
@@ -70,18 +80,36 @@ export async function generateImage(props: generateImageProps) {
         parameters: {
           negative_prompt: negativePrompt,
         }
-    })
+    });
 
-    // save blob to local disk
-    const buffer = Buffer.from(await blob.arrayBuffer())
-    fs.writeFile("test.png", buffer, (err) => {
-        if (err) {
-            console.error(err)
-            return
-        }
-    })
-    return "success! check your local disk for the generated image"
+    const filename = "page1.png";
+    const uploadedImage = await uploadImageToS3(filename, blob);
+    const url = await createPresignedUrlWithClient({ region: REGION, bucket: process.env.AWS_BUCKET_NAME ?? "", key: filename })
+    console.log(url);
+    return url;
 }
+
+async function uploadImageToS3(filename: string, blob: Blob) {
+    const arrayBuffer = await blob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const command = new PutObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME ?? "",
+        Key: filename,
+        Body: buffer,
+    });
+
+    return s3Client.send(command);
+}
+
+type presignedURLProps = {
+    region: string;
+    bucket: string;
+    key: string;
+}
+const createPresignedUrlWithClient = ({ bucket, key }: presignedURLProps) => {
+    const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+    return getSignedUrl(s3Client, command, { expiresIn: 3600 });
+};
 
 export const functionsForModel: ChatFunction[] = [
     {

@@ -33,6 +33,9 @@ Generate an image from a prompt.
 ```
 OPEN_WEATHER_API_KEY=<>
 HF_API_KEY=<>
+AWS_ACCESS_KEY_ID=<>
+AWS_S3_SECRET_ACCESS_KEY=<>
+AWS_REGION=<>
 ```
 
 4. Want to write your own? All your need to do is the following...

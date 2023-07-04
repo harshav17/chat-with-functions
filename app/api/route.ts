@@ -51,6 +51,7 @@ async function callOpenAI(res: any, writeToStream: (data: any) => Promise<void>,
 
     const chunk = decoder.decode(value);
     const lines = chunk.split("\n");
+    console.log("lines: " + lines);
     const parsedLines: any = lines
         .map((line) => line.replace("data: ", "").trim()) // Remove the "data: " prefix
         .filter((line) => line !== "" && line !== "[DONE]") // Remove empty lines and "[DONE]"
@@ -104,7 +105,7 @@ async function callOpenAI(res: any, writeToStream: (data: any) => Promise<void>,
       });
       res.push({
         role: "function",
-        content: JSON.stringify(funcRes),
+        content: funcRes,
         name: functionCall.name,
       });
       await callOpenAI(res, writeToStream, undefined);
@@ -119,6 +120,7 @@ async function callOpenAI(res: any, writeToStream: (data: any) => Promise<void>,
 
 export async function POST(request: NextRequest) {
   const res = await request.json();
+  console.log("request: " + JSON.stringify(res));
 
   let responseStream = new TransformStream();
   const writer = responseStream.writable.getWriter();

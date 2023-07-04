@@ -9,6 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.363.0",
+    "@aws-sdk/s3-request-presigner": "^3.363.0",
+    "@aws-sdk/signature-v4-crt": "^3.363.0",
     "@headlessui/react": "^1.7.15",
     "@huggingface/inference": "^2.6.1",
     "@microsoft/fetch-event-source": "^2.0.1",

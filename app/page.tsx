@@ -98,7 +98,7 @@ export default function Chat() {
                 }
             </div>
             <div ref={endOfMessagesRef}></div>
-            <div className="fixed inset-x-0 bottom-0 p-4 bg-gray-50">
+            <div className="fixed inset-x-0 bottom-0 p-4 bg-white">
                 <input
                     className="w-full px-3 h-12 py-2 text-sm leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
                     placeholder="Type your message…"
